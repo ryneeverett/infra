@@ -20,6 +20,7 @@
 
     ../services/hound
     ../services/matterbridge.nix
+    ../services/nixpkgs-update-logs.nix
   ];
 
   # /boot is a mirror raid

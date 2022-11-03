@@ -9,7 +9,7 @@ let
   nixpkgs-update-bin = "/var/lib/nixpkgs-update/bin/nixpkgs-update";
 
   nixpkgsUpdateSystemDependencies = with pkgs; [
-    nix # for nix-shell used by python packges to update fetchers
+    nix # for nix-shell used by python packages to update fetchers
     git # used by update-scripts
     gnugrep
     gnused
@@ -48,6 +48,8 @@ let
       RuntimeDirectory = "nixpkgs-update-worker";
       RuntimeDirectoryMode = "700";
       StandardOutput = "journal";
+      SyslogIdentifier = name;
+      LogNamespace = "nixpkgs-update";
     };
 
     script = ''
@@ -69,7 +71,7 @@ let
     '';
   };
 
-  mkFetcher = cmd: {
+  mkFetcher = name: cmd: {
     after = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
     path = nixpkgsUpdateSystemDependencies;
@@ -91,6 +93,8 @@ let
       StateDirectoryMode = "700";
       CacheDirectory = "nixpkgs-update/worker";
       CacheDirectoryMode = "700";
+      SyslogIdentifier = "nixpkgs-update-fetcher-${name}";
+      LogNamespace = "nixpkgs-update";
     };
     script = ''
       pipe=/var/lib/nixpkgs-update/fifo
@@ -141,10 +145,10 @@ in
     script = "${nixpkgs-update-bin} delete-done --delete";
   };
 
-  systemd.services.nixpkgs-update-fetch-repology = mkFetcher "${nixpkgs-update-bin} fetch-repology";
-  systemd.services.nixpkgs-update-fetch-updatescript = mkFetcher "${pkgs.nixUnstable}/bin/nix eval --raw -f ${./packages-with-update-script.nix}";
-  systemd.services.nixpkgs-update-fetch-pypi = mkFetcher "grep -rl $XDG_CACHE_HOME/nixpkgs -e buildPython | grep default | ${nixpkgs-update-pypi-releases'} --nixpkgs=/var/cache/nixpkgs-update/fetcher/nixpkgs";
-  systemd.services.nixpkgs-update-fetch-github = mkFetcher nixpkgs-update-github-releases';
+  systemd.services.nixpkgs-update-fetch-repology = mkFetcher "repology" "${nixpkgs-update-bin} fetch-repology";
+  systemd.services.nixpkgs-update-fetch-updatescript = mkFetcher "updatescript" "${pkgs.nixUnstable}/bin/nix eval --raw -f ${./packages-with-update-script.nix}";
+  systemd.services.nixpkgs-update-fetch-pypi = mkFetcher "pypi" "grep -rl $XDG_CACHE_HOME/nixpkgs -e buildPython | grep default | ${nixpkgs-update-pypi-releases'} --nixpkgs=/var/cache/nixpkgs-update/fetcher/nixpkgs";
+  systemd.services.nixpkgs-update-fetch-github = mkFetcher "github" nixpkgs-update-github-releases';
 
   systemd.services.nixpkgs-update-worker1 = mkWorker "worker1";
   systemd.services.nixpkgs-update-worker2 = mkWorker "worker2";
