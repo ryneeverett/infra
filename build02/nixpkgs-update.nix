@@ -1,6 +1,7 @@
 { nixpkgs-update
 , nixpkgs-update-github-releases
 , nixpkgs-update-pypi-releases
+, isDev
 }:
 { pkgs, lib, config, ... }:
 let
@@ -192,7 +193,7 @@ in
   };
 
   services.nginx.virtualHosts."r.ryantm.com" = {
-    forceSSL = true;
+    forceSSL = !isDev;
     enableACME = true;
     locations."/log/" = {
       alias = "/var/log/nixpkgs-update/";

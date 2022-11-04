@@ -61,17 +61,7 @@
             self.inputs.sops-nix.nixosModules.sops
             hercules-ci-agent.nixosModules.agent-service
           ];
-        in {
-          "build01.nix-community.org" = nixosSystem {
-            system = "x86_64-linux";
-            modules =
-              common
-              ++ [
-                ./build01/configuration.nix
-              ];
-          };
-
-          "build02.nix-community.org" = nixosSystem {
+          mkBuild02 = {isDev ? false }: nixosSystem {
             system = "x86_64-linux";
             modules =
               common
@@ -83,10 +73,23 @@
                     nixpkgs-update-github-releases
                     nixpkgs-update-pypi-releases
                     ;
+                  inherit isDev;
                 })
                 ./build02/configuration.nix
               ];
           };
+        in {
+          "build01.nix-community.org" = nixosSystem {
+            system = "x86_64-linux";
+            modules =
+              common
+              ++ [
+                ./build01/configuration.nix
+              ];
+          };
+
+          "build02.nix-community.org" = mkBuild02 { };
+          "dev-build02.nix-community.org" = mkBuild02 { isDev = true; };
 
           "build03.nix-community.org" = nixosSystem {
             system = "x86_64-linux";

@@ -39,20 +39,23 @@ in {
     '';
   };
 
-  services.nginx.virtualHosts."r.ryantm.com".locations."/logdb/".proxyPass = "http://localhost:${wsgiPort}";
+  services.nginx.virtualHosts."r.ryantm.com".locations."/logdb/".proxyPass = "http://localhost:${toString wsgiPort}";
 
   # Adapted from https://github.com/DavHau/django-nixos/blob/master/default.nix
-  services.systemd.gunicorn = let
+  systemd.services.gunicorn = let
     python = import ./python.nix { inherit pkgs; };
   in {
     environment = {
-      DJANGO_SECRET_KEY = config.sops.secrets."nixpkgs-update-logs-django-secret-key";
-      WSGI_PORT = wsgiPort;
+      # TODO: create secret key and remove hard coded key and debug flag
+      # DJANGO_SECRET_KEY = config.sops.secrets."django-secret-key";
+      DJANGO_SECRET_KEY = "django-insecure-gaun66_*jbq&m7q!t1mnb98sz(pftfbpi!6k)t$i5gjgggpc_*";
+      DJANGO_DEBUG = "1";
+      WSGI_PORT = toString wsgiPort;
     };
     script = ''
       ${python}/bin/gunicorn \
-        --pythonpath ${../djangoproject} \
-        -b :${wsgiPort}
+        --pythonpath ${./djangoproject} \
+        -b :${toString wsgiPort}
     '';
   };
 
