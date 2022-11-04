@@ -13,19 +13,28 @@ in {
 
   services.syslog-ng = {
     enable = true;
+    package = pkgs.syslogng.overrideAttrs (old: rec {
+      configureFlags = old.configureFlags ++ [ "--enable-sql" ];
+      buildInputs = old.buildInputs ++ (with pkgs; [
+        libdbi
+        libdbiDriversBase
+      ]);
+    });
     extraConfig = ''
       source s_journald {
         systemd-journal(namespace("nixpkgs-update"));
       };
 
       destination d_sql {
-        sql(type(pgsql)
-            host("127.0.0.1:${dbPort}")
-            database("nixpkgs-update-logs")
-            table("''${SYSLOG_IDENTIFIER}")
-            columns("datetime", "message")
-            values("''${R_DATE}", "''${MESSAGE}")
-            indexes("datetime"));
+        sql(
+          type(pgsql)
+          host("127.0.0.1:${toString dbPort}")
+          database("nixpkgs-update-logs")
+          table("''${SYSLOG_IDENTIFIER}")
+          columns("datetime", "message")
+          values("''${R_DATE}", "''${MESSAGE}")
+          indexes("datetime")
+        );
       };
     '';
   };
