@@ -9,6 +9,8 @@
     ../roles/nginx.nix
     ../roles/raid.nix
     ../roles/remote-builder/aarch64-build04.nix
+
+    ../services/nixpkgs-update-logs
   ];
 
   # /boot is a mirror raid
