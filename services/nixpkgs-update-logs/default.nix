@@ -45,6 +45,7 @@ in {
   systemd.services.gunicorn = let
     python = import ./python.nix { inherit pkgs; };
   in {
+    wantedBy = [ "multi-user.target" ];
     environment = {
       # TODO: create secret key and remove hard coded key and debug flag
       # DJANGO_SECRET_KEY = config.sops.secrets."django-secret-key";
@@ -53,7 +54,7 @@ in {
       WSGI_PORT = toString wsgiPort;
     };
     script = ''
-      ${python}/bin/gunicorn \
+      ${python}/bin/gunicorn djangoproject.wsgi \
         --pythonpath ${./djangoproject} \
         -b :${toString wsgiPort}
     '';
