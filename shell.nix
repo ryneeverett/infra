@@ -5,8 +5,6 @@
 
 with pkgs;
 mkShellNoCC {
-  DJANGO_DEBUG = 1;
-  DJANGO_SECRET_KEY = "django-insecure-gaun66_*jbq&m7q!t1mnb98sz(pftfbpi!6k)t$i5gjgggpc_*";
   QEMU_NET_OPTS = "hostfwd=tcp::8080-:80,hostfwd=tcp::2222-:22";
 
   sopsPGPKeyDirs = [
@@ -29,7 +27,5 @@ mkShellNoCC {
 
     sops-import-keys-hook
     deploykit
-
-    (import ./services/nixpkgs-update-logs/python.nix { inherit pkgs; })
   ];
 }

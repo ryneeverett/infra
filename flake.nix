@@ -75,6 +75,9 @@
                     ;
                   inherit isDev;
                 })
+                (import ./services/nixpkgs-update-logs {
+                  inherit isDev;
+                })
                 ./build02/configuration.nix
               ];
           };

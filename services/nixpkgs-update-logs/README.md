@@ -1,10 +1,3 @@
-How to run webserver locally:
-
-```sh
-cd djangoproject
-python manage.py runserver
-```
-
 How to run virtual machine:
 
 ```sh

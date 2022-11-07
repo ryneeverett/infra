@@ -1,4 +1,5 @@
-{ pkgs, config, ...}:
+{ isDev }:
+{ pkgs, ...}:
 
 let
   dbPort = 5433;
@@ -39,25 +40,33 @@ in {
     '';
   };
 
-  services.nginx.virtualHosts."r.ryantm.com".locations."/logdb/".proxyPass = "http://localhost:${toString wsgiPort}";
+  services.nginx.virtualHosts."r.ryantm.com".locations."/logdb/".proxyPass = "http://localhost:${toString wsgiPort}/";
 
-  # Adapted from https://github.com/DavHau/django-nixos/blob/master/default.nix
-  systemd.services.gunicorn = let
-    python = import ./python.nix { inherit pkgs; };
-  in {
+  systemd.services.logserver = {
     wantedBy = [ "multi-user.target" ];
+    path = [
+      (pkgs.python3.withPackages(ps: with ps; [
+        flask
+        flask_sqlalchemy
+        gunicorn
+        psycopg2
+      ]))
+    ];
     environment = {
-      # TODO: create secret key and remove hard coded key and debug flag
-      # DJANGO_SECRET_KEY = config.sops.secrets."django-secret-key";
-      DJANGO_SECRET_KEY = "django-insecure-gaun66_*jbq&m7q!t1mnb98sz(pftfbpi!6k)t$i5gjgggpc_*";
-      DJANGO_DEBUG = "1";
-      WSGI_PORT = toString wsgiPort;
+      DB_PORT = toString dbPort;
     };
-    script = ''
-      ${python}/bin/gunicorn djangoproject.wsgi \
-        --pythonpath ${./djangoproject} \
-        -b :${toString wsgiPort}
-    '';
+    script = if isDev then ''
+      flask \
+        --app ${./.}/logserver \
+        --debug \
+        run \
+        --port ${toString wsgiPort}
+      '' else ''
+        gunicorn \
+          logserver:app \
+          --pythonpath ${./.} \
+          -b :${toString wsgiPort}
+        '';
   };
 
 }
