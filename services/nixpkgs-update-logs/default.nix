@@ -1,17 +1,38 @@
 { isDev }:
-{ pkgs, ...}:
+{ pkgs, lib, ...}:
 
 let
+  dbName = "nixpkgs-update-logs";
   dbPort = 5433;
+  dbReader = "logserver";
+  dbWriter = "root";
   wsgiPort = 8001;
 in {
 
   services.postgresql = {
     enable = true;
-    ensureDatabases = ["nixpkgs-update-logs"];
     port = dbPort;
+    ensureDatabases = [ dbName ];
+    ensureUsers = [
+      {
+        name = dbReader;
+        ensurePermissions = {
+          "ALL TABLES IN SCHEMA public" = "SELECT";
+        };
+      }
+      {
+        name = dbWriter;
+        ensurePermissions = {
+          "DATABASE \"${dbName}\"" = "ALL PRIVILEGES";
+        };
+      }
+    ];
   };
 
+  systemd.services.syslog-ng.serviceConfig = {
+    User = dbWriter;
+    StandardOutput = lib.mkIf isDev (lib.mkForce "journal");
+  };
   services.syslog-ng = {
     enable = true;
     package = pkgs.syslogng.overrideAttrs (old: rec {
@@ -30,7 +51,8 @@ in {
         sql(
           type(pgsql)
           host("127.0.0.1:${toString dbPort}")
-          database("nixpkgs-update-logs")
+          username ("${dbWriter}")
+          database("${toString dbName}")
           table("''${SYSLOG_IDENTIFIER}")
           columns("datetime", "message")
           values("''${R_DATE}", "''${MESSAGE}")
@@ -42,8 +64,13 @@ in {
 
   services.nginx.virtualHosts."r.ryantm.com".locations."/logdb/".proxyPass = "http://localhost:${toString wsgiPort}/";
 
+  users.users."${dbReader}" = {
+    group = dbReader;
+    isSystemUser = true;
+  };
   systemd.services.logserver = {
     wantedBy = [ "multi-user.target" ];
+    serviceConfig.User = dbReader;
     path = [
       (pkgs.python3.withPackages(ps: with ps; [
         flask
@@ -53,6 +80,7 @@ in {
       ]))
     ];
     environment = {
+      DB_NAME = toString dbName;
       DB_PORT = toString dbPort;
     };
     script = if isDev then ''
