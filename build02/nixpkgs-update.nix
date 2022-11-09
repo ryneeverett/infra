@@ -50,6 +50,7 @@ let
       RuntimeDirectoryMode = "700";
       StandardOutput = "journal";
       SyslogIdentifier = name;
+      SyslogFacility = "local1";
       LogNamespace = "nixpkgs-update";
     };
 
@@ -94,7 +95,8 @@ let
       StateDirectoryMode = "700";
       CacheDirectory = "nixpkgs-update/worker";
       CacheDirectoryMode = "700";
-      SyslogIdentifier = "nixpkgs-update-fetcher-${name}";
+      SyslogIdentifier = "${name}";
+      SyslogFacility = "local0";
       LogNamespace = "nixpkgs-update";
     };
     script = ''

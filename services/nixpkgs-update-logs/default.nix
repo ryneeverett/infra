@@ -2,17 +2,25 @@
 { pkgs, lib, ...}:
 
 let
-  dbName = "nixpkgs-update-logs";
+  fetcherDb = "fetcher";
+  packageDb = "package";
   dbPort = 5433;
   dbReader = "logserver";
   dbWriter = "root";
   wsgiPort = 8001;
 in {
+  disabledModules = [
+    "services/logging/syslog-ng.nix"
+  ];
+  imports = [
+    # TODO PR
+    ./syslog-ng.nix
+  ];
 
   services.postgresql = {
     enable = true;
     port = dbPort;
-    ensureDatabases = [ dbName ];
+    ensureDatabases = [ fetcherDb packageDb ];
     ensureUsers = [
       {
         name = dbReader;
@@ -23,7 +31,8 @@ in {
       {
         name = dbWriter;
         ensurePermissions = {
-          "DATABASE \"${dbName}\"" = "ALL PRIVILEGES";
+          "DATABASE \"${fetcherDb }\"" = "ALL PRIVILEGES";
+          "DATABASE \"${packageDb}\"" = "ALL PRIVILEGES";
         };
       }
     ];
@@ -38,8 +47,13 @@ in {
     package = pkgs.syslogng.overrideAttrs (old: rec {
       configureFlags = old.configureFlags ++ [ "--enable-sql" ];
       buildInputs = old.buildInputs ++ (with pkgs; [
-        libdbi
-        libdbiDriversBase
+        # Syslog-ng looks for dbd to be in the same directory as libdbi.
+        # See https://github.com/syslog-ng/syslog-ng/issues/4033.
+        (libdbi.overrideAttrs (old: rec {
+          postFixup = ''
+            ln -s ${libdbiDriversBase}/lib/dbd $out/lib/
+          '';
+        }))
       ]);
     });
     extraConfig = ''
@@ -47,19 +61,54 @@ in {
         systemd-journal(namespace("nixpkgs-update"));
       };
 
-      destination d_sql {
+      destination d_fetcher_db {
         sql(
           type(pgsql)
-          host("127.0.0.1:${toString dbPort}")
-          username ("${dbWriter}")
-          database("${toString dbName}")
+          port("${toString dbPort}")
+          username("${dbWriter}")
+          database("${fetcherDb}")
           table("''${SYSLOG_IDENTIFIER}")
           columns("datetime", "message")
           values("''${R_DATE}", "''${MESSAGE}")
           indexes("datetime")
         );
       };
+
+      destination d_package_db {
+        sql(
+          type(pgsql)
+          port("${toString dbPort}")
+          username("${dbWriter}")
+          database("${packageDb}")
+          table("''${SYSLOG_IDENTIFIER}")
+          columns("datetime", "message")
+          values("''${R_DATE}", "''${MESSAGE}")
+          indexes("datetime")
+        );
+      };
+
+      filter f_fetcher {
+        facility("local0");
+      };
+
+      filter f_package {
+        facility("local1");
+      };
+
+      log {
+        source(s_journald);
+        filter(f_fetcher);
+        destination(d_fetcher_db);
+      };
+
+      log {
+        source(s_journald);
+        filter(f_package);
+        destination(d_package_db);
+      };
+
     '';
+    extraParams = if isDev then [ "--verbose" "--debug" "--trace" "--stderr" ] else [];
   };
 
   services.nginx.virtualHosts."r.ryantm.com".locations."/logdb/".proxyPass = "http://localhost:${toString wsgiPort}/";
@@ -80,7 +129,8 @@ in {
       ]))
     ];
     environment = {
-      DB_NAME = toString dbName;
+      FETCHER_DB = toString fetcherDb;
+      PACKAGE_DB = toString packageDb;
       DB_PORT = toString dbPort;
     };
     script = if isDev then ''

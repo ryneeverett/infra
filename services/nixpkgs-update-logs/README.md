@@ -17,5 +17,6 @@ ssh -p 2222 localhost
 
 # Access database:
 sudo su - postgres
-psql --port 5433 nixpkgs-update-logs
+psql --port 5433 fetcher
+psql --port 5433 package
 ```

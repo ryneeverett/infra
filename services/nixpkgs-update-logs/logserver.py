@@ -12,7 +12,7 @@ app = Flask(__name__)
 db = SQLAlchemy()
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://localhost:{port}/{db}".format(  # noqa
     port=os.getenv('DB_PORT'),
-    db=os.getenv('DB_NAME'),
+    db=os.getenv('FETCHER_DB'),
 )
 db.init_app(app)
 
