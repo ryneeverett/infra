@@ -10,7 +10,9 @@ from flask_sqlalchemy import SQLAlchemy  # noqa
 app = Flask(__name__)
 
 db = SQLAlchemy()
-app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://localhost:{port}/{db}".format(  # noqa
+# TODO connect to PACKAGE_DB too
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://{user}@:{port}/{db}".format(  # noqa
+    user=os.getenv('DB_USER'),
     port=os.getenv('DB_PORT'),
     db=os.getenv('FETCHER_DB'),
 )
@@ -19,5 +21,5 @@ db.init_app(app)
 
 @app.route("/")
 def hello_world():
-    data = db.metadata.tables.keys()
+    data = db.engine.table_names()
     return f"<h1>Hello, World!</h1><div>{data}</div>"

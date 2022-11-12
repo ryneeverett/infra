@@ -132,6 +132,7 @@ in {
       FETCHER_DB = toString fetcherDb;
       PACKAGE_DB = toString packageDb;
       DB_PORT = toString dbPort;
+      DB_USER = dbReader;
     };
     script = if isDev then ''
       flask \
