@@ -54,7 +54,9 @@ let
       LogNamespace = "nixpkgs-update";
     };
 
-    script = ''
+    script = let
+      flags = if isDev then "" else "--pr --outpaths --nixpkgs-review";
+    in ''
       pipe=/var/lib/nixpkgs-update/fifo
 
       if [[ ! -p $pipe ]]; then
@@ -66,7 +68,7 @@ let
       do
         if read -u 8 line; then
           set -x
-          ${nixpkgs-update-bin} update-batch --pr --outpaths --nixpkgs-review "$line" || true
+          ${nixpkgs-update-bin} update-batch ${flags} "$line" || true
           set +x
         fi
       done
